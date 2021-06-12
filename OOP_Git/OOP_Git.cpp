@@ -18,13 +18,13 @@ protected:
 	char letter;
 public:
 	//заповнення імені та id
-	Global_Info(int start, int end, static int& alphabet_Name, static int& alphabet_num, static int& id) {
+	Global_Info(int end, static int& alphabet_Name, static int& alphabet_num, static int& id) {
 		if (alphabet_Name > end) {
-			alphabet_Name = start;
+			alphabet_Name = end - 26;
 			alphabet_num++;
 		}
 		letter = alphabet_Name++;
-		this->id = id++;
+		this->id = ++id;
 		this->name = letter + to_string(alphabet_num);
 	}
 	//виведення імені
@@ -40,7 +40,7 @@ private:
 	float x, y, z;
 public:
 	//стартове заповнення
-	Point() :Global_Info(65, 90, alphabet_Point, alphabet_num, general_id) {}
+	Point() :Global_Info(90, alphabet_Point, alphabet_num, general_id) {}
 
 	//заповнення координат точки за межами класу
 	void SetX(float x) { this->x = x; }
@@ -56,7 +56,7 @@ public:
 //стартове значення імен точок
 int Point::alphabet_Point = 65;
 int Point::alphabet_num = 0;
-int Point::general_id = 0;
+int Point::general_id = -1;
 
 //клас вектора
 class Vector : public Global_Info {
@@ -65,9 +65,9 @@ private:
 	static int general_id, alphabet_Vector, alphabet_num;
 public:
 	//стартове заповнення
-	Vector() :Global_Info(97, 122, alphabet_Vector, alphabet_num, general_id) {}
+	Vector() :Global_Info(122, alphabet_Vector, alphabet_num, general_id) {}
 	//перегрузка конструктора
-	Vector(Point& other_1, Point& other_2) :Global_Info(97, 122, alphabet_Vector, alphabet_num, general_id) {
+	Vector(Point& other_1, Point& other_2) :Global_Info(122, alphabet_Vector, alphabet_num, general_id) {
 		//заповнення координат вектора
 		this->x = ceil((other_2.GetX() - other_1.GetX()) * 1000) / 1000;
 		this->y = ceil((other_2.GetY() - other_1.GetY()) * 1000) / 1000;
@@ -89,20 +89,22 @@ public:
 	static int Get_General_Id() { return general_id; }
 	//метод додавання двох векторів
 	Vector operator +(const Vector& other) {
+		alphabet_Vector--;
+		general_id--;
 		Vector temp;
 		temp.x = this->x + other.x;
-		temp.y = this->x + other.y;
+		temp.y = this->y + other.y;
 		temp.z = this->z + other.z;
-		alphabet_Vector--;
 		return temp;
 	}
 	//метод віднімання двох векторів
 	Vector operator -(const Vector& other) {
+		alphabet_Vector--;
+		general_id--;
 		Vector temp;
 		temp.x = this->x - other.x;
 		temp.y = this->x - other.y;
 		temp.z = this->z - other.z;
-		alphabet_Vector--;
 		return temp;
 	}
 	//метод присвоєння значень
@@ -117,7 +119,7 @@ public:
 //стартове значення імен точок
 int Vector::alphabet_Vector = 97;
 int Vector::alphabet_num = 0;
-int Vector::general_id = 0;
+int Vector::general_id = -1;
 
 //клас створення таблиці
 class Print_Info {
@@ -182,14 +184,81 @@ public:
 		for (i = 0; i < limit; i++)cout << "-";
 	}
 };
+//виведення таблиці з даними про вектор
+void Print_Object(vector<Vector> object, vector<Point> point) {
+	int j, i = 0, k = 1;
+	Print_Info print;
+	print.Table();
+	for (j = 0; j <= Vector::Get_General_Id(); j++) {
+		print.Print(object[j], point[i], point[k]);
+		i += 2; k += 2;
+	}
+}
+//визначення першої точки вектора після додавання, або віднімання (чи потрібно виправити)
+void First_Point(Point& other, vector<Point> &point, int j){
+	other.SetX(point[j].GetX());
+	other.SetY(point[j].GetY());
+	other.SetZ(point[j].GetZ());
+}
+//додавання та віднімання вектора
+void Addition_And_Subtraction(vector<Vector> &object, vector<Point> &point, const char* action) {
+	int vector_a, vector_b, check;
+	bool check_menu;
+	Vector temp;
+	Point other[2];
+	Print_Info print;
+	string text;
+	cout << endl << setw(5) << "" << "Введіть номер першого вектора: ";
+	cin >> vector_a;
+	cout << endl << setw(5) << "" << "Введіть номер другого вектора: ";
+	cin >> vector_b;
+	if (!strcmp(action, "+")) {
+		temp = object[vector_a - 1] + object[vector_b - 1];
+		text = "додавання";
+	}
+	if (!strcmp(action, "-")) {
+		temp = object[vector_a - 1] - object[vector_b - 1];
+		text = "віднімання";
+	}
+	cout << endl << setw(7) << "" << "Результат " << text << " вектора " << object[vector_a - 1].Get_Name() << " та вектора " << object[vector_b - 1].Get_Name() << " становить: ";
+	print.Vector_Info_Coordinates(temp);
+	do {
+		cout << endl << setw(5) << "" << "Чи хочете ви додати його в список до інших векторів?" << endl;
+		cout << setw(10) << "-> " << "1. Так." << endl;
+		cout << setw(10) << "-> " << "2. Ні." << endl;
+		cout << setw(12) << "-> " << "Ваш варіант: ";
+		cin >> check;
+		switch (check) {
+		case 1: {
+			check_menu = true;
+			object.emplace_back(temp);
+			//визначення координат першої точки нового вектора
+			vector_a - 1 == 0 ? First_Point(other[0], point, 0) : First_Point(other[0], point, pow(2, vector_a - 1));
+			//визначення координат другої точки нового вектора
+			other[1].SetX(temp.GetX() + other[0].GetX());
+			other[1].SetY(temp.GetY() + other[0].GetY());
+			other[1].SetZ(temp.GetZ() + other[0].GetZ());
+			//занесення даних про точку в масив об'єктів
+			for (int j = 0; j < 2; j++)
+				point.emplace_back(other[j]);
+			//виведення інформації
+			Print_Object(object, point);
+			break;
+		}
+		// вихід з циклу
+		case 2: check_menu = true; break;
+		default: check_menu = false;  cout << endl << setw(12) << "-> " << "Такого варіанту немає в списку!!! Спробуйте іще раз" << endl;
+		}
+	} while (!check_menu);
+}
 
 int main() {
 	SetConsoleCP(1251);
 	SetConsoleOutputCP(1251);
 
 	cout << endl << setw(5) << "" << "Трохвимірний простір" << endl;
-	int j, index, k = 1, i = 0, num = 0, num_new = 0, size_point = 0, size_vector = 0;
-	bool check_menu, chec_finaly;
+	int j, index, k = 1, i = 0, num = 0, num_new = 0;
+	bool check_menu, check_finaly;
 
 	Print_Info print;
 	vector<Vector> object;
@@ -198,18 +267,17 @@ int main() {
 	cin >> num_new;
 	do {
 		num += num_new;
-		while (size_vector < num) {
+		while (Vector::Get_General_Id() < num - 1) {
 			for (j = 0; j < 2; j++) {
 				//занесення об'єкта в масив об'єктів
 				point.emplace_back(print.Point_Data());
-				cout << endl << setw(7) << "" << "Координати точки " << point[size_point].Get_Name() << ": ";
-				print.Point_Info_Coordinates(point[size_point++]);
+				cout << endl << setw(7) << "" << "Координати точки " << point[Point::Get_General_Id()].Get_Name() << ": ";
+				print.Point_Info_Coordinates(point[Point::Get_General_Id()]);
 				cout << endl << endl;
 			}
 			//занесення об'єкта в масив об'єктів
-			Vector vect(point[size_point - 2], point[size_point - 1]);
+			Vector vect(point[Point::Get_General_Id() - 1], point[Point::Get_General_Id()]);
 			object.emplace_back(vect);
-			size_vector++;
 			if (num > 1) {
 				for (j = 0; j < 100; j++)cout << "-";
 				cout << endl << endl;
@@ -225,23 +293,62 @@ int main() {
 			switch (index) {
 			case 1: {
 				check_menu = true;
-				chec_finaly = false;
+				check_finaly = false;
 				cout << endl << setw(5) << "" << "Введіть скільки іще векторів ви хочете створити: ";
 				cin >> num;
 				break;
 			}
-			case 2: check_menu = chec_finaly = true; break;
+			case 2: check_menu = check_finaly = true; break;
 			default: check_menu = false;  cout << endl << setw(12) << "-> " << "Такого варіанту немає в списку!!! Спробуйте іще раз" << endl;
 			}
 		} while (!check_menu);
 
-	} while (!chec_finaly);
+	} while (!check_finaly);
 
 	//виведення інформації (таблиця)
-	print.Table();
-	for (j = 0; j < num; j++) {
-		print.Print(object[j], point[i], point[k]);
-		i += 2; k += 2;
-	}
+	Print_Object(object, point);
+
+	//переробити
+	check_finaly = false;
+	do {
+		cout << endl << setw(5) << "" << "Меню" << endl;
+		cout << setw(5) << "" << "0. Вихід." << endl;
+		cout << setw(5) << "" << "1. Додавання двох любих векторів." << endl;
+		cout << setw(5) << "" << "2. Віднімання двох любих векторів." << endl;
+		cout << setw(5) << "" << "3. Скалярний добуток будь-яких векторів." << endl;
+		cout << setw(5) << "" << "4. Напрямні косинуси вектора." << endl;
+		cout << setw(5) << "" << "Ваш варіант: ";
+		cin >> index;
+		switch (index) {
+		case 0: check_finaly = true; break;
+		//додавання
+		case 1: { Addition_And_Subtraction(object, point, "+"); break;	}
+		//віднімання
+		case 2: { Addition_And_Subtraction(object, point, "-"); break;	}
+		case 3: {
+			int id_vector_1, id_vector_2;
+			cout << endl << setw(5) << "" << "Введіть номер першого вектора: ";
+			cin >> id_vector_1;
+			cout << endl << setw(5) << "" << "Введіть номер першого вектора: ";
+			cin >> id_vector_2;
+			cout << endl << setw(7) << "" << "Скалярний добуток вектора " << object[id_vector_1 - 1].Get_Name() << " та вектора " << object[id_vector_2 - 1].Get_Name() << ", становить: " << object[id_vector_1 - 1].Get_Scalar(object[id_vector_2 - 1]) << endl;
+			break;
+		}
+		case 4: {
+			int id_vector;
+			cout << endl << setw(5) << "" << "Введіть номер вектора: ";
+			cin >> id_vector;
+			cout << endl << setw(7) << "" << "Координати вектора " << object[id_vector - 1].Get_Name() << " ";
+			print.Vector_Info_Coordinates(object[id_vector - 1]);
+			cout << ", довжина вектора " << object[id_vector - 1].Get_Length() << endl << endl;
+			cout << setw(7) << "" << "Напрямний вектор по осі x " << object[id_vector - 1].Get_Angle_A() << endl;
+			cout << setw(7) << "" << "Напрямний вектор по осі y " << object[id_vector - 1].Get_Angle_B() << endl;
+			cout << setw(7) << "" << "Напрямний вектор по осі z " << object[id_vector - 1].Get_Angle_C() << endl;
+			break;
+		}
+		default: cout << endl << setw(12) << "-> " << "Такого варіанту немає в списку!!! Спробуйте іще раз" << endl;
+		}
+	} while (!check_finaly);
+	
 	return 0;
 }
